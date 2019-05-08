@@ -508,7 +508,7 @@ static int w1_ds2432_write_secret(struct w1_slave *sl, u8 *secret)
 // Data memory (page 0-3)
 //
 
-static ssize_t data_memory_read(struct file *filp, struct kobject *kobj,
+static ssize_t eeprom_read(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *bin_attr, char *buf,
 				loff_t off, size_t count)
 {
@@ -533,7 +533,7 @@ out_up:
 }
 
 // Block-size are 8 bytes.
-static int data_memory_write_block(struct w1_slave *sl, u16 address, const u8 *data) {
+static int eeprom_write_block(struct w1_slave *sl, u16 address, const u8 *data) {
 	int error = 0;
 	u16 sp_address = 0;
 	u8 es = 0;
@@ -587,7 +587,7 @@ static int data_memory_write_block(struct w1_slave *sl, u16 address, const u8 *d
 	return error;
 }
 
-static ssize_t data_memory_write(struct file *filp, struct kobject *kobj,
+static ssize_t eeprom_write(struct file *filp, struct kobject *kobj,
 			    struct bin_attribute *bin_attr, char *buf,
 			    loff_t off, size_t count)
 {
@@ -604,7 +604,7 @@ static ssize_t data_memory_write(struct file *filp, struct kobject *kobj,
 
 	// We can only write 8 bytes at a time
 	while (address < count) {
-		result = data_memory_write_block(sl, address, &buf[address]);
+		result = eeprom_write_block(sl, address, &buf[address]);
 		if (result < 0) {
 			count = result;
 			goto out_up;
@@ -619,7 +619,7 @@ out_up:
 	return count;
 }
 
-static BIN_ATTR_RW(data_memory, W1_DS2432_DATA_MEMORY_SIZE);
+static BIN_ATTR_RW(eeprom, W1_DS2432_DATA_MEMORY_SIZE);
 
 //
 // SECRET MEMORY
@@ -969,7 +969,7 @@ out_up:
 static BIN_ATTR_RO(registration_number, 8);
 
 static struct bin_attribute *w1_ds2432_bin_attributes[] = {
-	&bin_attr_data_memory,
+	&bin_attr_eeprom,
 	&bin_attr_secret,
 	&bin_attr_secret_sync,
 	&bin_attr_register_page,
