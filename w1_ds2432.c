@@ -1012,10 +1012,8 @@ static int w1_b3_add_slave(struct w1_slave *sl)
 
 static void w1_b3_remove_slave(struct w1_slave *sl)
 {
-#ifdef CONFIG_W1_SLAVE_DS2432_CRC
 	kfree(sl->family_data);
 	sl->family_data = NULL;
-#endif	/* CONFIG_W1_SLAVE_DS2433_CRC */
 }
 
 static struct w1_family_ops w1_b3_fops = {
