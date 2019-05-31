@@ -65,3 +65,12 @@ Ask the chip to use the secret `aabbccddeeff1122`:
 # echo -e -n "\xaa\xbb\xcc\xdd\xee\xff\x11\x22" > /sys/bus/w1/devices/b3-xxxxxxxxxxxx/secret
 # echo -n 1 > /sys/bus/w1/devices/b3-xxxxxxxxxxxx/secret_sync
 ```
+
+## Errors
+
+Interacting with the chips can lead to the following errors:
+
+* `EACCES`: mac is invalid, probablue due to a bad key (`permission denied`). Verify secret.
+* `EPERM`: mac is valid, but the chip is `write-protected` (`operation not permitted`).
+* `EIO`: unknown error, potentially i/o related (`input/output error`). Try to disconnect/reconnect the chip.
+
