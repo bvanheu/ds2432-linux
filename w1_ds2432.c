@@ -56,29 +56,6 @@ struct w1_b3_data {
   u8 registration_number[8];
 };
 
-u16 crc16(const u8 *input, u16 len, u16 crc) {
-  static const u8 oddparity[16] = {0, 1, 1, 0, 1, 0, 0, 1,
-                                   1, 0, 0, 1, 0, 1, 1, 0};
-
-  u16 i = 0;
-  for (i = 0; i < len; i++) {
-    // Even though we're just copying a byte from the input,
-    // we'll be doing 16-bit computation with it.
-    u16 cdata = input[i];
-    cdata = (cdata ^ crc) & 0xff;
-    crc >>= 8;
-
-    if (oddparity[cdata & 0x0F] ^ oddparity[cdata >> 4])
-      crc ^= 0xC001;
-
-    cdata <<= 6;
-    crc ^= cdata;
-    cdata <<= 1;
-    crc ^= cdata;
-  }
-  return crc;
-}
-
 // Compute the 160-bit MAC
 //
 // Note: This algorithm is the SHA-1 algorithm as specified in the
@@ -204,8 +181,9 @@ static int w1_ds2432_read_memory(struct w1_slave *sl, int address, u8 *memory,
 
 static int w1_ds2432_write_scratchpad(struct w1_slave *sl, int address,
                                       const u8 *data) {
-  u16 my_crc = 0;
   u8 wrbuf[11] = {0};
+  u16 ds2432_scratchpad_crc = 0;
+  u16 my_scratchpad_crc = 0;
 
   if (w1_reset_select_slave(sl)) {
     return -EIO;
@@ -219,7 +197,6 @@ static int w1_ds2432_write_scratchpad(struct w1_slave *sl, int address,
   wrbuf[4] = data[1];
   wrbuf[5] = data[2];
   wrbuf[6] = data[3];
-
   wrbuf[7] = data[4];
   wrbuf[8] = data[5];
   wrbuf[9] = data[6];
@@ -227,13 +204,21 @@ static int w1_ds2432_write_scratchpad(struct w1_slave *sl, int address,
 
   w1_write_block(sl->master, wrbuf, sizeof(wrbuf));
 
-  my_crc = crc16(wrbuf, 3, 0);
-  my_crc = crc16(data, 8, my_crc);
+  // Read inverted CRC16
+  w1_read_block(sl->master, (u8 *)&ds2432_scratchpad_crc, 2);
 
-  wrbuf[0] = 0xff;
-  wrbuf[1] = 0xff;
-  w1_read_block(sl->master, wrbuf, 2);
-  printk("Received CRC32: %04x (computed: %04x)\n", *(u16 *)wrbuf, my_crc);
+#ifdef CONFIG_W1_SLAVE_DS2432_CRC
+  my_scratchpad_crc = crc16(0, wrbuf, sizeof(wrbuf));
+
+  // Under certain conditions (see Write Scratchpad command) the master will
+  // receive an inverted CRC16 of the command,
+  ds2432_scratchpad_crc = ~ds2432_scratchpad_crc;
+
+  if (my_scratchpad_crc != ds2432_scratchpad_crc) {
+    dev_err(&sl->dev, "write_scratchpad: invalid checksum: received %04x but expected %04x\n", ds2432_scratchpad_crc, my_scratchpad_crc);
+    return -EIO;
+  }
+#endif
 
   return 0;
 }
@@ -242,7 +227,8 @@ static int w1_ds2432_read_scratchpad(struct w1_slave *sl, u16 *address, u8 *es,
                                      u8 *data) {
   u8 wrbuf[1] = {0};
   u8 rdbuf[3] = {0};
-  u8 crc[2] = {0};
+  u16 ds2432_scratchpad_crc = 0;
+  u16 my_scratchpad_crc = 0;
 
   if (w1_reset_select_slave(sl)) {
     return -EIO;
@@ -263,10 +249,23 @@ static int w1_ds2432_read_scratchpad(struct w1_slave *sl, u16 *address, u8 *es,
   // Read the content of the scratchpad (8 bytes)
   w1_read_block(sl->master, data, 8);
 
-  // Read CRC
-  w1_read_block(sl->master, crc, 2);
+  // Read inverted CRC16
+  w1_read_block(sl->master, (u8 *)&ds2432_scratchpad_crc, 2);
 
-  printk("read_scratchpad crc: %02X%02x\n", crc[0], crc[1]);
+#ifdef CONFIG_W1_SLAVE_DS2432_CRC
+  my_scratchpad_crc = crc16(0, wrbuf, 1);
+  my_scratchpad_crc = crc16(my_scratchpad_crc, rdbuf, 3);
+  my_scratchpad_crc = crc16(my_scratchpad_crc, data, 8);
+
+  // Under certain conditions (see Read Scratchpad command) the master will
+  // receive an inverted CRC16 of the command,
+  ds2432_scratchpad_crc = ~ds2432_scratchpad_crc;
+
+  if (my_scratchpad_crc != ds2432_scratchpad_crc) {
+    dev_err(&sl->dev, "read_scratchpad: invalid checksum: received %04x but expected %04x\n", ds2432_scratchpad_crc, my_scratchpad_crc);
+    return -EIO;
+  }
+#endif
 
   return 0;
 }
