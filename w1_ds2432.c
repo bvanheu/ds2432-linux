@@ -17,6 +17,7 @@
 #include <linux/cryptohash.h>
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
+#include <linux/w1.h>
 
 #ifdef CONFIG_W1_SLAVE_DS2432_CRC
 #include <linux/crc16.h>
@@ -26,18 +27,12 @@
 
 #endif
 
-// If included in the Linux tree:
-//#include "../w1.h"
-//#include "../w1_int.h"
-//#include "../w1_family.h"
-#include "linux/w1.h"
-#include "linux/w1_int.h"
-#include "linux/w1_family.h"
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Benjamin Vanheuverzwijn <bvanheu@gmail.com>");
 MODULE_DESCRIPTION("w1 family b3 driver for DS2432, 1kb EEPROM");
 MODULE_ALIAS("w1-family-" __stringify(W1_EEPROM_DS2432));
+
+#define W1_EEPROM_DS2432            0xB3
 
 #define W1_DS2432_DATA_MEMORY_SIZE  0x80
 
