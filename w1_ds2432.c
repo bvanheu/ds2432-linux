@@ -215,7 +215,10 @@ static int w1_ds2432_write_scratchpad(struct w1_slave *sl, int address,
   ds2432_scratchpad_crc = ~ds2432_scratchpad_crc;
 
   if (my_scratchpad_crc != ds2432_scratchpad_crc) {
-    dev_err(&sl->dev, "write_scratchpad: invalid checksum: received %04x but expected %04x\n", ds2432_scratchpad_crc, my_scratchpad_crc);
+    dev_err(
+        &sl->dev,
+        "write_scratchpad: invalid checksum: received %04x but expected %04x\n",
+        ds2432_scratchpad_crc, my_scratchpad_crc);
     return -EIO;
   }
 #endif
@@ -262,7 +265,10 @@ static int w1_ds2432_read_scratchpad(struct w1_slave *sl, u16 *address, u8 *es,
   ds2432_scratchpad_crc = ~ds2432_scratchpad_crc;
 
   if (my_scratchpad_crc != ds2432_scratchpad_crc) {
-    dev_err(&sl->dev, "read_scratchpad: invalid checksum: received %04x but expected %04x\n", ds2432_scratchpad_crc, my_scratchpad_crc);
+    dev_err(
+        &sl->dev,
+        "read_scratchpad: invalid checksum: received %04x but expected %04x\n",
+        ds2432_scratchpad_crc, my_scratchpad_crc);
     return -EIO;
   }
 #endif
