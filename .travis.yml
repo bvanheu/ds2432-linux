@@ -1,0 +1,8 @@
+language: c
+compiler: gcc
+dist: bionic
+addons:
+  apt:
+    packages:
+        - linux-headers
+script: make
