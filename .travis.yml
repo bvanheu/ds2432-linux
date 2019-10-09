@@ -4,5 +4,5 @@ dist: bionic
 addons:
   apt:
     packages:
-        - linux-headers
+        - linux-headers-$(uname -r)
 script: make
