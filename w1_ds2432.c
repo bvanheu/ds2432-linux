@@ -27,11 +27,6 @@
 
 #endif
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Benjamin Vanheuverzwijn <bvanheu@gmail.com>");
-MODULE_DESCRIPTION("w1 family b3 driver for DS2432, 1kb EEPROM");
-MODULE_ALIAS("w1-family-" __stringify(W1_EEPROM_DS2432));
-
 #define W1_EEPROM_DS2432            0xB3
 
 #define W1_DS2432_DATA_MEMORY_SIZE  0x80
@@ -60,14 +55,6 @@ MODULE_ALIAS("w1-family-" __stringify(W1_EEPROM_DS2432));
 struct w1_b3_data {
 	u8 secret[8];
 	u8 registration_number[8];
-};
-
-struct sha1 {
-	u32 a;
-	u32 b;
-	u32 c;
-	u32 d;
-	u32 e;
 };
 
 u16 crc16(const u8* input, u16 len, u16 crc)
@@ -100,6 +87,14 @@ u16 crc16(const u8* input, u16 len, u16 crc)
 // datasheet for the DS1961S, where the last step of the official
 // FIPS-180 SHA routine is omitted (which only involves the addition of
 // constant values).
+
+struct sha1 {
+    u32 a;
+    u32 b;
+    u32 c;
+    u32 d;
+    u32 e;
+};
 
 #define f1(x,y,z)   (z ^ (x & (y ^ z)))  /* x ? y : z */
 #define f2(x,y,z)   (x ^ y ^ z)   /* XOR */
@@ -183,10 +178,10 @@ static int w1_ds2432_read_memory(struct w1_slave *sl, int address, u8 *memory, s
 	// Command
 	wrbuf[0] = DS2432_READ_MEMORY;
 	// Target address
-	wrbuf[1] = address & 0xff;
-	wrbuf[2] = address >> 8;
+	wrbuf[1] = (u8)(address & 0xff);
+	wrbuf[2] = (u8)(address >> 8);
 
-	w1_write_block(sl->master, wrbuf, 3);
+	w1_write_block(sl->master, wrbuf, sizeof(wrbuf));
 	w1_read_block(sl->master, memory, count);
 
 	return 0;
@@ -202,8 +197,8 @@ static int w1_ds2432_write_scratchpad(struct w1_slave *sl, int address, const u8
 	}
 
 	wrbuf[0] = DS2432_WRITE_SCRATCHPAD;
-	wrbuf[1] = address & 0xff;
-	wrbuf[2] = address >> 8;
+	wrbuf[1] = (u8)(address & 0xff);
+	wrbuf[2] = (u8)(address >> 8);
 
 	wrbuf[3] = data[0];
 	wrbuf[4] = data[1];
@@ -381,31 +376,31 @@ static int w1_ds2432_copy_scratchpad(struct w1_slave *sl, u16 address, u8 es, co
 
 	value = mac->e;
 	for (i=0; i<4; i++) {
-		copy_scratchpad_mac[i] = (u8)(value & 0x000000ff);
+		copy_scratchpad_mac[i] = (u8)(value & 0xff);
 		value = value >> 8;
 	}
 
 	value = mac->d;
 	for (i=0; i<4; i++) {
-		copy_scratchpad_mac[4+i] = (u8)(value & 0x000000ff);
+		copy_scratchpad_mac[4+i] = (u8)(value & 0xff);
 		value = value >> 8;
 	}
 
 	value = mac->c;
 	for (i=0; i<4; i++) {
-		copy_scratchpad_mac[8+i] = (u8)(value & 0x000000ff);
+		copy_scratchpad_mac[8+i] = (u8)(value & 0xff);
 		value = value >> 8;
 	}
 
 	value = mac->b;
 	for (i=0; i<4; i++) {
-		copy_scratchpad_mac[12+i] = (u8)(value & 0x000000ff);
+		copy_scratchpad_mac[12+i] = (u8)(value & 0xff);
 		value = value >> 8;
 	}
 
 	value = mac->a;
 	for (i=0; i<4; i++) {
-		copy_scratchpad_mac[16+i] = (u8)(value & 0x000000ff);
+		copy_scratchpad_mac[16+i] = (u8)(value & 0xff);
 		value = value >> 8;
 	}
 
@@ -494,7 +489,7 @@ static int w1_ds2432_write_secret(struct w1_slave *sl, u8 *secret)
 
 
 //
-// Data memory (page 0-3)
+// eeprom (page 0 to 3)
 //
 
 static ssize_t eeprom_read(struct file *filp, struct kobject *kobj,
@@ -563,7 +558,7 @@ static int eeprom_write_block(struct w1_slave *sl, u16 address, const u8 *data) 
 
 	if (memcmp(scratchpad, data, 8)) {
 		dev_err(&sl->dev, "scratchpad data does not match\n");
-		// EIO: data read is not equal to what was sent , probably due to i/o.
+		// EIO: data read is not equal to what was sent, probably due to i/o.
 		return -EIO;
 	}
 
@@ -613,7 +608,7 @@ static BIN_ATTR_RW(eeprom, W1_DS2432_DATA_MEMORY_SIZE);
 //
 // SECRET MEMORY
 //
-// 0080h to 0087h - No read access; no secret for write access
+// 0080h to 0087h - No read access; secret not required for write access
 //
 
 static ssize_t secret_read(struct file *filp, struct kobject *kobj,
@@ -1008,11 +1003,17 @@ static void w1_b3_remove_slave(struct w1_slave *sl)
 static struct w1_family_ops w1_b3_fops = {
 	.add_slave      = w1_b3_add_slave,
 	.remove_slave   = w1_b3_remove_slave,
-	.groups		= w1_b3_groups,
+	.groups		    = w1_b3_groups,
 };
 
 static struct w1_family w1_family_b3 = {
 	.fid = W1_EEPROM_DS2432,
 	.fops = &w1_b3_fops,
 };
+
 module_w1_family(w1_family_b3);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Benjamin Vanheuverzwijn <bvanheu@gmail.com>");
+MODULE_DESCRIPTION("w1 family b3 driver for DS2432, 1kb EEPROM");
+MODULE_ALIAS("w1-family-" __stringify(W1_EEPROM_DS2432));
