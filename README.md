@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/bvanheu/ds2432-linux.svg?branch=master)](https://travis-ci.org/bvanheu/ds2432-linux)
+
 # ds2432-linux
 
 Linux driver to interface with a DS2432 (family B3) over 1-wire.
